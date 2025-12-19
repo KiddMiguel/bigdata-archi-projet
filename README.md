@@ -1,0 +1,2 @@
+- Lancer le bash du fichier demo.sh dans le dossier scripts. 
+- Faites attention au fichier de reset de peur qu'il vide tous vos volumes docker.
