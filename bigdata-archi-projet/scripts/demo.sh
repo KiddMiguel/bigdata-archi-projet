@@ -34,11 +34,13 @@ wait_container() {
 
 # -------- Checks --------
 need_cmd docker
-need_cmd docker-compose || need_cmd docker  # docker compose possible
-need_cmd python || need_cmd python3
+need_cmd docker-compose || need_cmd docker
 
-PYTHON_BIN="python"
-command -v python >/dev/null 2>&1 || PYTHON_BIN="python3"
+# Choix python local (PC) pour generator + ETL
+PYTHON_BIN="python3"
+command -v python3 >/dev/null 2>&1 || PYTHON_BIN="python"
+
+need_cmd "$PYTHON_BIN"
 
 echo ""
 echo "1) 🐳 Démarrage des services Docker..."
@@ -50,6 +52,10 @@ wait_container "resourcemanager"
 wait_container "kafka"
 wait_container "postgres"
 wait_container "metabase"
+
+echo ""
+echo "1bis) 🐍 Vérification Python dans namenode (plus d'apt-get)..."
+docker exec namenode bash -lc "python3 --version"
 
 echo ""
 echo "2) 🧪 Génération du dataset (10k events)..."
@@ -64,12 +70,16 @@ echo "4) ⬆️ Upload des données dans HDFS..."
 bash hdfs/hdfs_put.sh
 
 echo ""
+echo "4bis) 🔎 Aperçu data HDFS (5 lignes)..."
+docker exec namenode bash -lc "hdfs dfs -cat /input/mobile_events_sample.txt | head -n 5"
+
+echo ""
 echo "5) ⚙️ Lancement MapReduce Job1 (events by screen)..."
 bash mapreduce/job1_events_by_screen/run.sh
 
 echo ""
 echo "6) 🧺 Export résultats Job1 -> PostgreSQL..."
-# dépendance python ETL
+# dépendance python ETL (côté PC)
 if ! $PYTHON_BIN -c "import psycopg2" >/dev/null 2>&1; then
   echo "📦 Installation psycopg2-binary..."
   $PYTHON_BIN -m pip install --quiet psycopg2-binary
